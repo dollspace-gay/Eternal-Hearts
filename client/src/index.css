@@ -1,0 +1,197 @@
+/* Custom fonts */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 10%, 8%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(348, 83%, 47%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  
+  /* Gothic Vampire Theme Colors */
+  --vampire-red: hsl(338, 70%, 40%);
+  --midnight: hsl(240, 13%, 8%);
+  --gothic-purple: hsl(297, 42%, 30%);
+  --dark-rose: hsl(336, 42%, 39%);
+  --blood-red: hsl(348, 83%, 57%);
+  --moonlight: hsl(0, 0%, 85%);
+  --parchment: hsl(60, 29%, 95%);
+  --void-purple: hsl(260, 100%, 15%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .vampire-red {
+    color: var(--vampire-red) !important;
+  }
+  
+  .bg-vampire-red {
+    background-color: var(--vampire-red) !important;
+  }
+  
+  .midnight {
+    color: var(--midnight) !important;
+  }
+  
+  .bg-midnight {
+    background-color: var(--midnight) !important;
+  }
+  
+  .gothic-purple {
+    color: var(--gothic-purple) !important;
+  }
+  
+  .bg-gothic-purple {
+    background-color: var(--gothic-purple) !important;
+  }
+  
+  .dark-rose {
+    color: var(--dark-rose) !important;
+  }
+  
+  .bg-dark-rose {
+    background-color: var(--dark-rose) !important;
+  }
+  
+  .blood-red {
+    color: var(--blood-red) !important;
+  }
+  
+  .bg-blood-red {
+    background-color: var(--blood-red) !important;
+  }
+  
+  .moonlight {
+    color: var(--moonlight) !important;
+  }
+  
+  .bg-moonlight {
+    background-color: var(--moonlight) !important;
+  }
+  
+  .void-purple {
+    color: var(--void-purple) !important;
+  }
+  
+  .bg-void-purple {
+    background-color: var(--void-purple) !important;
+  }
+  
+  .parchment {
+    color: var(--parchment) !important;
+  }
+  
+  .bg-parchment {
+    background-color: var(--parchment) !important;
+  }
+  
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  }
+  
+  .story-text {
+    line-height: 1.8;
+  }
+  
+  .choice-hover:hover {
+    background: linear-gradient(135deg, rgba(220, 38, 127, 0.8), rgba(139, 69, 139, 0.8)) !important;
+    transform: translateX(5px);
+    transition: all 0.3s ease;
+  }
+  
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulseGlow {
+    0%, 100% { 
+      box-shadow: 0 0 5px rgba(220, 38, 127, 0.5); 
+    }
+    50% { 
+      box-shadow: 0 0 20px rgba(220, 38, 127, 0.8), 0 0 30px rgba(220, 38, 127, 0.4); 
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-in;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.font-story {
+  font-family: 'Crimson Text', serif;
+}
+
+.font-ui {
+  font-family: 'Inter', sans-serif;
+}
