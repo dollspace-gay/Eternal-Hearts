@@ -95,6 +95,10 @@ export interface ChoiceHistory {
   consequence: string;
   timestamp: number;
   characterEffects: { characterId: string; affectionChange: number }[];
+  playerStatsAtTime?: {
+    health: number;
+    sanity: number;
+  };
 }
 
 export interface JournalEntry {

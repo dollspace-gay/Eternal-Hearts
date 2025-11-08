@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
 import { GameState, Choice, PlayerCharacter, JournalEntry, Achievement, RecoveryAction } from '../types/game';
 import { initialGameState, gameData } from '../data/gameData';
 import { achievements, checkAchievements } from '../data/achievements';
@@ -51,7 +51,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'MAKE_CHOICE':
       const choice = action.payload;
       const newState = { ...state };
-      
+
+      // Capture player stats BEFORE applying choice effects for history tracking
+      const playerStatsBeforeChoice = {
+        health: newState.playerStats.health,
+        sanity: newState.playerStats.sanity
+      };
+
       // Apply character affection and trust changes
       choice.effects.forEach(effect => {
         if (newState.characters[effect.characterId]) {
@@ -152,14 +158,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         });
       }
 
-      // Store choice in history with trust tracking
+      // Store choice in history with trust tracking and player stats at time of choice
       newState.choiceHistory.push({
         sceneId: newState.currentScene,
         choiceId: choice.id,
         choiceText: choice.text,
         consequence: choice.consequence,
         timestamp: Date.now(),
-        characterEffects: choice.effects
+        characterEffects: choice.effects,
+        playerStatsAtTime: playerStatsBeforeChoice
       });
       
       // Progress to next scene if specified
@@ -269,16 +276,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
   
   const [gameState, dispatch] = useReducer(gameReducer, initialStateWithAchievements);
-  
-  // Auto-save functionality
+
+  // Use ref to track latest gameState for auto-save without recreating interval
+  const gameStateRef = useRef<GameState>(gameState);
+
+  // Update ref whenever gameState changes
   useEffect(() => {
-    const autoSave = () => {
-      localStorage.setItem('crimsonEmbrace_autoSave', JSON.stringify(gameState));
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  // Auto-save functionality - interval created only once on mount
+  useEffect(() => {
+    const autoSave = (): void => {
+      try {
+        // Use ref to get latest gameState without recreating interval
+        const stateToSave = JSON.stringify(gameStateRef.current);
+        localStorage.setItem('crimsonEmbrace_autoSave', stateToSave);
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+        // Handle quota exceeded or other localStorage errors
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+          console.warn('localStorage quota exceeded - auto-save disabled');
+        }
+      }
     };
-    
+
     const interval = setInterval(autoSave, 30000); // Auto-save every 30 seconds
     return () => clearInterval(interval);
-  }, [gameState]);
+  }, []); // Empty dependency array - interval created only once
   
   // Load auto-save on mount only if it exists and is valid
   useEffect(() => {
@@ -298,7 +323,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('crimsonEmbrace_autoSave');
       }
     }
-  }, []);
+  }, [dispatch]); // Include dispatch for proper dependency tracking (stable, won't cause re-runs)
   
   const getCurrentScene = () => {
     const chapter = gameData[gameState.currentChapter];

@@ -1,4 +1,4 @@
-import { RecoveryAction } from '../types/game';
+import { RecoveryAction, GameState, Character } from '../types/game';
 
 export const recoveryActions: Record<string, RecoveryAction> = {
   basic_rest: {
@@ -103,7 +103,7 @@ export const recoveryActions: Record<string, RecoveryAction> = {
   }
 };
 
-export const getAvailableRecoveryActions = (gameState: any): RecoveryAction[] => {
+export const getAvailableRecoveryActions = (gameState: GameState): RecoveryAction[] => {
   const now = Date.now();
   
   return Object.values(recoveryActions).filter(action => {
@@ -122,7 +122,7 @@ export const getAvailableRecoveryActions = (gameState: any): RecoveryAction[] =>
       
       if (action.requirements.minAffection) {
         const hasRequiredAffection = Object.values(gameState.characters).some(
-          (character: any) => character.affection >= action.requirements!.minAffection!
+          (character: Character) => character.affection >= action.requirements!.minAffection!
         );
         if (!hasRequiredAffection) {
           return false;

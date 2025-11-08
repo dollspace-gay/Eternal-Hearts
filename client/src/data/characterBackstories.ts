@@ -1,4 +1,4 @@
-import { CharacterBackstory } from '../types/game';
+import { CharacterBackstory, GameState } from '../types/game';
 import { characters } from './gameData';
 
 export const characterBackstories: CharacterBackstory[] = [
@@ -250,7 +250,7 @@ export const characterBackstories: CharacterBackstory[] = [
   }
 ];
 
-export const checkBackstoryUnlocks = (gameState: any): string[] => {
+export const checkBackstoryUnlocks = (gameState: GameState): string[] => {
   const newlyUnlocked: string[] = [];
   
   characterBackstories.forEach(backstory => {

@@ -1,4 +1,4 @@
-import { Achievement } from '../types/game';
+import { Achievement, GameState, Character } from '../types/game';
 
 export const achievements: Achievement[] = [
   // Story Progress Achievements
@@ -180,7 +180,7 @@ export const achievements: Achievement[] = [
   }
 ];
 
-export const checkAchievements = (gameState: any): string[] => {
+export const checkAchievements = (gameState: GameState): string[] => {
   const newlyUnlocked: string[] = [];
   
   achievements.forEach(achievement => {
@@ -210,31 +210,38 @@ export const checkAchievements = (gameState: any): string[] => {
         break;
         
       case 'first_friend':
-        shouldUnlock = Object.values(gameState.characters).some((char: any) => char.affection >= 50);
+        shouldUnlock = Object.values(gameState.characters).some((char: Character) => char.affection >= 50);
         break;
-        
+
       case 'trusted_ally':
-        shouldUnlock = Object.values(gameState.characters).some((char: any) => 
+        shouldUnlock = Object.values(gameState.characters).some((char: Character) =>
           char.affection >= 80 && char.trust >= 70
         );
         break;
-        
+
       case 'beloved':
-        shouldUnlock = Object.values(gameState.characters).some((char: any) => char.affection >= 100);
+        shouldUnlock = Object.values(gameState.characters).some((char: Character) => char.affection >= 100);
         break;
-        
+
       case 'social_butterfly':
         const highAffectionCount = Object.values(gameState.characters).filter(
-          (char: any) => char.affection >= 60
+          (char: Character) => char.affection >= 60
         ).length;
         shouldUnlock = highAffectionCount >= 5;
         break;
         
       case 'survivor':
-        // Check last 10 choices had health and sanity > 50
+        // Check last 10 choices had health and sanity > 50 at the time they were made
         const recentChoices = gameState.choiceHistory.slice(-10);
-        shouldUnlock = recentChoices.length >= 10 && 
-          recentChoices.every(() => gameState.playerStats.health > 50 && gameState.playerStats.sanity > 50);
+        shouldUnlock = recentChoices.length >= 10 &&
+          recentChoices.every((choice) => {
+            // Handle backwards compatibility with old saves that don't have playerStatsAtTime
+            if (!choice.playerStatsAtTime) {
+              return false;
+            }
+            return choice.playerStatsAtTime.health > 50 &&
+                   choice.playerStatsAtTime.sanity > 50;
+          });
         break;
         
       case 'iron_will':
