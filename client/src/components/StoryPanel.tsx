@@ -1,8 +1,18 @@
+import { useMemo } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { Heart } from 'lucide-react';
+import { sanitizeUrl } from '../lib/utils';
 
-export function StoryPanel() {
+export function StoryPanel(): JSX.Element {
   const { currentScene } = useGame();
+
+  // Sanitize the background URL to prevent XSS attacks
+  const safeBackgroundUrl = useMemo(() => {
+    if (!currentScene?.background) {
+      return undefined;
+    }
+    return sanitizeUrl(currentScene.background);
+  }, [currentScene?.background]);
   
   if (!currentScene) {
     return (
@@ -21,11 +31,11 @@ export function StoryPanel() {
   return (
     <div className="flex-1 p-8 lg:p-12 overflow-y-auto relative">
       {/* Background Image */}
-      {currentScene.background && (
-        <div 
+      {safeBackgroundUrl && (
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
           style={{
-            backgroundImage: `url(${currentScene.background})`,
+            backgroundImage: `url(${safeBackgroundUrl})`,
             filter: 'blur(1px) brightness(0.4)'
           }}
         />

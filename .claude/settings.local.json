@@ -4,7 +4,8 @@
       "Bash(bd --help:*)",
       "Bash(bd status:*)",
       "Bash(bd create:*)",
-      "Bash(bd quickstart:*)"
+      "Bash(bd quickstart:*)",
+      "Bash(*)"
     ],
     "deny": [],
     "ask": []
