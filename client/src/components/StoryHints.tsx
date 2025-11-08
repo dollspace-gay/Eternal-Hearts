@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { useGame } from '@/contexts/GameContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb, Heart, AlertTriangle, Info } from 'lucide-react';
+import { Choice } from '@/types/game';
 
 interface HintData {
   type: 'relationship' | 'story' | 'warning' | 'opportunity';
@@ -11,10 +13,11 @@ interface HintData {
   priority: 'low' | 'medium' | 'high';
 }
 
-export function StoryHints() {
+export function StoryHints(): JSX.Element | null {
   const { gameState, currentScene } = useGame();
 
-  const generateHints = (): HintData[] => {
+  // Memoize hint generation to avoid expensive recalculations on every render
+  const hints = useMemo((): HintData[] => {
     const hints: HintData[] = [];
     
     // Check character relationship levels and provide hints
@@ -47,17 +50,30 @@ export function StoryHints() {
     });
 
     // Scene-specific hints based on current location
-    if (currentScene?.choices) {
-      const hasRomanticChoice = currentScene.choices.some((choice: any) => 
-        choice.consequence.toLowerCase().includes('romantic') || 
-        choice.consequence.toLowerCase().includes('attraction')
-      );
-      
-      const hasRiskyChoice = currentScene.choices.some((choice: any) =>
-        choice.consequence.toLowerCase().includes('risk') ||
-        choice.consequence.toLowerCase().includes('danger') ||
-        choice.effects.some((effect: any) => effect.affectionChange < -5)
-      );
+    if (currentScene?.choices && Array.isArray(currentScene.choices) && currentScene.choices.length > 0) {
+      const hasRomanticChoice = currentScene.choices.some((choice: Choice) => {
+        if (!choice.consequence || typeof choice.consequence !== 'string') {
+          return false;
+        }
+        const lowerConsequence = choice.consequence.toLowerCase();
+        return lowerConsequence.includes('romantic') || lowerConsequence.includes('attraction');
+      });
+
+      const hasRiskyChoice = currentScene.choices.some((choice: Choice) => {
+        if (!choice.consequence || typeof choice.consequence !== 'string') {
+          return false;
+        }
+        const lowerConsequence = choice.consequence.toLowerCase();
+        const hasRiskyConsequence = lowerConsequence.includes('risk') || lowerConsequence.includes('danger');
+
+        // Safely check effects array for negative affection changes
+        const hasNegativeEffect = Array.isArray(choice.effects) &&
+          choice.effects.some((effect) => {
+            return typeof effect.affectionChange === 'number' && effect.affectionChange < -5;
+          });
+
+        return hasRiskyConsequence || hasNegativeEffect;
+      });
 
       if (hasRomanticChoice) {
         hints.push({
@@ -123,28 +139,40 @@ export function StoryHints() {
     }
 
     // Advanced player choice pattern analysis
-    const choiceHistory = gameState.choiceHistory || [];
+    const choiceHistory = Array.isArray(gameState.choiceHistory) ? gameState.choiceHistory : [];
     if (choiceHistory.length >= 3) {
       const recentChoices = choiceHistory.slice(-5);
-      
+
       // Analyze choice consequences for patterns
-      const romanticChoices = recentChoices.filter(choice => 
-        choice.consequence.toLowerCase().includes('romantic') ||
-        choice.consequence.toLowerCase().includes('attraction') ||
-        choice.consequence.toLowerCase().includes('love')
-      );
-      
-      const cautiousChoices = recentChoices.filter(choice =>
-        choice.consequence.toLowerCase().includes('cautious') ||
-        choice.consequence.toLowerCase().includes('wisdom') ||
-        choice.consequence.toLowerCase().includes('practical')
-      );
-      
-      const boldChoices = recentChoices.filter(choice =>
-        choice.consequence.toLowerCase().includes('bold') ||
-        choice.consequence.toLowerCase().includes('confident') ||
-        choice.consequence.toLowerCase().includes('commit')
-      );
+      const romanticChoices = recentChoices.filter(choice => {
+        if (!choice.consequence || typeof choice.consequence !== 'string') {
+          return false;
+        }
+        const lowerConsequence = choice.consequence.toLowerCase();
+        return lowerConsequence.includes('romantic') ||
+               lowerConsequence.includes('attraction') ||
+               lowerConsequence.includes('love');
+      });
+
+      const cautiousChoices = recentChoices.filter(choice => {
+        if (!choice.consequence || typeof choice.consequence !== 'string') {
+          return false;
+        }
+        const lowerConsequence = choice.consequence.toLowerCase();
+        return lowerConsequence.includes('cautious') ||
+               lowerConsequence.includes('wisdom') ||
+               lowerConsequence.includes('practical');
+      });
+
+      const boldChoices = recentChoices.filter(choice => {
+        if (!choice.consequence || typeof choice.consequence !== 'string') {
+          return false;
+        }
+        const lowerConsequence = choice.consequence.toLowerCase();
+        return lowerConsequence.includes('bold') ||
+               lowerConsequence.includes('confident') ||
+               lowerConsequence.includes('commit');
+      });
 
       // Identify player's dominant choice pattern
       if (romanticChoices.length >= 3) {
@@ -177,8 +205,11 @@ export function StoryHints() {
       // Character focus analysis
       const characterChoiceCount: Record<string, number> = {};
       recentChoices.forEach(choice => {
+        if (!Array.isArray(choice.characterEffects)) {
+          return;
+        }
         choice.characterEffects.forEach(effect => {
-          if (effect.affectionChange > 0) {
+          if (effect && typeof effect.affectionChange === 'number' && effect.affectionChange > 0 && effect.characterId) {
             characterChoiceCount[effect.characterId] = (characterChoiceCount[effect.characterId] || 0) + 1;
           }
         });
@@ -203,7 +234,13 @@ export function StoryHints() {
     if (choiceHistory.length >= 2) {
       const recentAffectionChanges: Record<string, number[]> = {};
       choiceHistory.slice(-3).forEach(choice => {
+        if (!Array.isArray(choice.characterEffects)) {
+          return;
+        }
         choice.characterEffects.forEach(effect => {
+          if (!effect || !effect.characterId || typeof effect.affectionChange !== 'number') {
+            return;
+          }
           if (!recentAffectionChanges[effect.characterId]) {
             recentAffectionChanges[effect.characterId] = [];
           }
@@ -242,15 +279,13 @@ export function StoryHints() {
         return priorityOrder[b.priority] - priorityOrder[a.priority];
       })
       .slice(0, 4); // Show max 4 hints to avoid overwhelming
-  };
-
-  const hints = generateHints();
+  }, [gameState, currentScene]); // Recalculate when gameState or currentScene changes
   
   if (hints.length === 0) {
     return null;
   }
 
-  const getHintIcon = (type: HintData['type']) => {
+  const getHintIcon = (type: HintData['type']): JSX.Element => {
     switch (type) {
       case 'relationship':
         return <Heart className="w-4 h-4" />;
@@ -263,7 +298,7 @@ export function StoryHints() {
     }
   };
 
-  const getHintColor = (type: HintData['type']) => {
+  const getHintColor = (type: HintData['type']): string => {
     switch (type) {
       case 'relationship':
         return 'bg-rose-500/20 text-rose-200 border-rose-500/30';

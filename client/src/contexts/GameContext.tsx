@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
-import { GameState, Choice, PlayerCharacter, JournalEntry, Achievement, RecoveryAction } from '../types/game';
+import { GameState, Choice, PlayerCharacter, JournalEntry, Achievement, RecoveryAction, Scene } from '../types/game';
 import { initialGameState, gameData } from '../data/gameData';
 import { achievements, checkAchievements } from '../data/achievements';
 import { checkBackstoryUnlocks } from '../data/characterBackstories';
@@ -7,7 +7,7 @@ import { applyCharacterEffects } from '../utils/characterEffects';
 
 interface GameContextType {
   gameState: GameState;
-  currentScene: any;
+  currentScene: Scene | undefined;
   makeChoice: (choice: Choice) => void;
   createCharacter: (character: PlayerCharacter) => void;
   saveGame: (slotName: string) => void;
@@ -171,10 +171,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Progress to next scene if specified
       if (choice.nextScene) {
-        newState.currentScene = choice.nextScene;
-        newState.completedScenes.push(state.currentScene);
+        // Validate that the next scene exists before transitioning
+        const targetChapter = gameData[newState.currentChapter];
+        const sceneExists = targetChapter?.scenes.some(scene => scene.id === choice.nextScene);
+
+        if (sceneExists) {
+          newState.currentScene = choice.nextScene;
+          newState.completedScenes.push(state.currentScene);
+        } else {
+          // Scene doesn't exist - log error but don't break game state
+          console.error(
+            `Scene transition failed: Scene "${choice.nextScene}" not found in chapter ${newState.currentChapter}. ` +
+            `Staying on current scene "${state.currentScene}".`
+          );
+          // Add journal entry about the error for debugging
+          newState.journal.push({
+            id: `error_${Date.now()}`,
+            type: 'discovery',
+            title: 'Navigation Error',
+            description: `An unexpected error occurred during story progression. Please report this issue.`,
+            timestamp: Date.now(),
+            metadata: {
+              error: 'scene_not_found',
+              attemptedScene: choice.nextScene,
+              currentChapter: newState.currentChapter
+            }
+          });
+        }
       }
-      
+
       return newState;
       
     case 'UPDATE_AFFECTION':
@@ -280,10 +305,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Use ref to track latest gameState for auto-save without recreating interval
   const gameStateRef = useRef<GameState>(gameState);
 
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef<boolean>(true);
+
+  // Track active timeouts for cleanup
+  const activeTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+
   // Update ref whenever gameState changes
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // Set mounted flag and cleanup timeouts on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      // Clear all pending timeouts to prevent memory leaks
+      activeTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+      activeTimeoutsRef.current.clear();
+    };
+  }, []);
 
   // Auto-save functionality - interval created only once on mount
   useEffect(() => {
@@ -325,19 +368,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [dispatch]); // Include dispatch for proper dependency tracking (stable, won't cause re-runs)
   
-  const getCurrentScene = () => {
+  const getCurrentScene = (): Scene | undefined => {
     const chapter = gameData[gameState.currentChapter];
-    return chapter?.scenes.find(scene => scene.id === gameState.currentScene);
+    const scene = chapter?.scenes.find(scene => scene.id === gameState.currentScene);
+
+    // Log error if scene not found to help with debugging
+    if (!scene && gameState.isCharacterCreated) {
+      console.error(
+        `Scene not found: "${gameState.currentScene}" in chapter ${gameState.currentChapter}. ` +
+        `Available scenes: ${chapter?.scenes.map(s => s.id).join(', ') || 'none'}`
+      );
+    }
+
+    return scene;
   };
   
-  const makeChoice = (choice: Choice) => {
+  const makeChoice = (choice: Choice): void => {
     // Apply character trait effects to choice
-    const modifiedChoice = gameState.playerCharacter 
+    const modifiedChoice = gameState.playerCharacter
       ? applyCharacterEffects([choice], gameState.playerCharacter)[0]
       : choice;
-    
+
     dispatch({ type: 'MAKE_CHOICE', payload: modifiedChoice });
-    
+
     // Add journal entry for choice
     const journalEntry: JournalEntry = {
       id: `choice_${Date.now()}`,
@@ -352,19 +405,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     };
     addJournalEntry(journalEntry);
-    
-    // Check for achievement unlocks
-    setTimeout(() => {
-      const newAchievements = checkAchievements(gameState);
+
+    // Check for achievement unlocks with proper cleanup to prevent memory leaks
+    const timeoutId = setTimeout(() => {
+      // Only proceed if component is still mounted
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      // Use ref to get latest state, avoiding stale closure
+      const currentState = gameStateRef.current;
+
+      const newAchievements = checkAchievements(currentState);
       newAchievements.forEach(achievementId => {
-        unlockAchievement(achievementId);
+        if (isMountedRef.current) {
+          unlockAchievement(achievementId);
+        }
       });
-      
+
       // Check for backstory unlocks
-      const newBackstories = checkBackstoryUnlocks(gameState);
+      const newBackstories = checkBackstoryUnlocks(currentState);
       newBackstories.forEach(backstoryId => {
+        if (!isMountedRef.current) {
+          return;
+        }
+
         unlockBackstory(backstoryId);
-        
+
         // Add journal entry for backstory unlock
         const backstoryEntry: JournalEntry = {
           id: `backstory_${Date.now()}`,
@@ -376,28 +443,56 @@ export function GameProvider({ children }: { children: ReactNode }) {
         };
         addJournalEntry(backstoryEntry);
       });
+
+      // Remove from active timeouts set after completion
+      activeTimeoutsRef.current.delete(timeoutId);
     }, 100);
+
+    // Track timeout for cleanup on unmount
+    activeTimeoutsRef.current.add(timeoutId);
   };
   
   const createCharacter = (character: PlayerCharacter) => {
     dispatch({ type: 'CREATE_CHARACTER', payload: character });
   };
   
-  const saveGame = (slotName: string) => {
+  const saveGame = (slotName: string): void => {
     const saveData = {
       ...gameState,
       timestamp: new Date().toISOString()
     };
-    localStorage.setItem(`crimsonEmbrace_save_${slotName}`, JSON.stringify(saveData));
+
+    try {
+      const saveDataString = JSON.stringify(saveData);
+      localStorage.setItem(`crimsonEmbrace_save_${slotName}`, saveDataString);
+    } catch (error) {
+      console.error('Failed to save game:', error);
+
+      // Provide specific error messages for common failures
+      if (error instanceof Error) {
+        if (error.name === 'QuotaExceededError') {
+          throw new Error('Save failed: Storage quota exceeded. Please delete old saves to free up space.');
+        }
+        throw new Error(`Save failed: ${error.message}`);
+      }
+
+      throw new Error('Save failed: Unable to save game data to localStorage.');
+    }
   };
   
   const loadGame = (loadedGameState: GameState) => {
     dispatch({ type: 'LOAD_GAME', payload: loadedGameState });
   };
   
-  const resetGame = () => {
-    // Clear auto-save data to ensure fresh start
-    localStorage.removeItem('crimsonEmbrace_autoSave');
+  const resetGame = (): void => {
+    try {
+      // Clear auto-save data to ensure fresh start
+      localStorage.removeItem('crimsonEmbrace_autoSave');
+    } catch (error) {
+      console.error('Failed to clear auto-save during reset:', error);
+      // Continue with reset even if localStorage clear fails
+    }
+
     dispatch({ type: 'RESET_GAME' });
   };
 

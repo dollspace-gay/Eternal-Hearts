@@ -19,9 +19,15 @@ export function StoryPanel(): JSX.Element {
       <div className="flex-1 p-8 lg:p-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <div className="bg-midnight/60 backdrop-blur-sm rounded-xl p-8 lg:p-12 border border-blood-red/20">
-            <p className="font-story text-lg text-parchment text-center">
-              Loading story...
-            </p>
+            <div className="text-center space-y-4">
+              <p className="font-story text-lg text-parchment">
+                Loading story...
+              </p>
+              <p className="text-sm text-muted-foreground">
+                If this message persists, there may be an issue with the story data.
+                Please check your save or start a new game.
+              </p>
+            </div>
           </div>
         </div>
       </div>
