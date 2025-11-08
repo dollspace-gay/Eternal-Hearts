@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bd --help:*)",
+      "Bash(bd status:*)",
+      "Bash(bd create:*)",
+      "Bash(bd quickstart:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
