@@ -7,11 +7,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { X, Save, FolderOpen, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { GameState } from '../types/game';
 
 interface SaveSlot {
   id: number;
   slotName: string;
-  gameData: any;
+  gameData: GameState;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,7 +119,7 @@ export function GameStateModal({ isOpen, onClose, mode }: GameStateModalProps) {
         const data = localStorage.getItem(key);
         if (data) {
           try {
-            const gameData = JSON.parse(data);
+            const gameData = JSON.parse(data) as GameState;
             saves.push({
               id: `local_${slotName}`,
               slotName,
@@ -127,7 +128,10 @@ export function GameStateModal({ isOpen, onClose, mode }: GameStateModalProps) {
               isLocal: true
             });
           } catch (e) {
-            // Ignore invalid saves
+            console.error(
+              `[GameStateModal] Failed to parse save data for slot "${slotName}". ` +
+              `The save file may be corrupted. Error: ${e instanceof Error ? e.message : String(e)}`
+            );
           }
         }
       }

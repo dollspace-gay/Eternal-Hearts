@@ -52,9 +52,14 @@ export function CharacterCreation() {
     }
   };
   
-  const canFinishCreation = () => {
-    return playerName.trim() !== '' && 
-           selectedTraits.length === 3 && // One from each category
+  const canFinishCreation = (): boolean => {
+    const hasPhysical = selectedTraits.some(t => t.category === 'physical');
+    const hasSocial = selectedTraits.some(t => t.category === 'social');
+    const hasMental = selectedTraits.some(t => t.category === 'mental');
+
+    return playerName.trim() !== '' &&
+           selectedTraits.length === 3 &&
+           hasPhysical && hasSocial && hasMental && // Verify one from each category
            remainingPoints >= 0;
   };
   

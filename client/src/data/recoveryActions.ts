@@ -130,10 +130,21 @@ export const getAvailableRecoveryActions = (gameState: GameState): RecoveryActio
       }
       
       if (action.requirements.characterPresent) {
-        // For now, assume character is present if affection is high enough
+        // Character presence is approximated by affection level as a design choice:
+        // - Characters with high affection (30+) are narratively willing to spend time with the player
+        // - This avoids complex scene-based presence tracking in the current game state
+        // - Recovery actions are story moments, not strict location-based mechanics
+        // - If full location tracking is added later, update this check
         const character = gameState.characters[action.requirements.characterPresent];
-        if (!character || character.affection < 30) {
+        if (!character) {
+          console.warn(
+            `[RecoveryActions] Character "${action.requirements.characterPresent}" ` +
+            `required for action "${action.id}" does not exist in game state.`
+          );
           return false;
+        }
+        if (character.affection < 30) {
+          return false; // Character not close enough to spend recovery time together
         }
       }
     }

@@ -3,21 +3,26 @@ import { GameInterface } from '../components/GameInterface';
 import { CharacterCreation } from '../components/CharacterCreation';
 import { GameStateModal } from '../components/GameStateModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 
-function GameContent() {
+function GameContent(): JSX.Element {
   const { gameState } = useGame();
   const [showLoadModal, setShowLoadModal] = useState(false);
-  
+  const isMountedRef = useRef<boolean>(true);
+
   useEffect(() => {
     // Check if we should show load modal based on URL parameter
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('load') === 'true') {
+    if (urlParams.get('load') === 'true' && isMountedRef.current) {
       setShowLoadModal(true);
       // Clean up URL
       window.history.replaceState({}, '', '/game');
     }
+
+    return (): void => {
+      isMountedRef.current = false;
+    };
   }, []);
   
   if (!gameState.isCharacterCreated) {

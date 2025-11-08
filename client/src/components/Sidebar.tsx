@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Heart, Users, MapPin, X, Shield, AlertTriangle, BookOpen, Trophy, RefreshCw, Brain, Lightbulb } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,37 +11,47 @@ import { StoryHints } from '@/components/StoryHints';
 import { Journal } from '@/components/Journal';
 import { Achievements } from '@/components/Achievements';
 import { RecoveryPanel } from '@/components/RecoveryPanel';
+import type { LucideIcon } from 'lucide-react';
 
 interface SidebarProps {
   onClose?: () => void;
+}
+
+// Pure functions moved outside component to avoid recreation on every render
+function getRelationshipStatus(affection: number, trust: number): { status: string; color: string; icon: LucideIcon } {
+  // Trust-based danger states override normal affection states
+  if (trust <= 10) return { status: 'Hostile', color: 'bg-red-700', icon: AlertTriangle };
+  if (trust <= 20) return { status: 'Deeply Suspicious', color: 'bg-red-600', icon: AlertTriangle };
+  if (trust <= 30) return { status: 'Distrustful', color: 'bg-orange-600', icon: AlertTriangle };
+  if (trust <= 40) return { status: 'Wary', color: 'bg-yellow-600', icon: Shield };
+
+  // Normal affection-based states when trust is adequate
+  if (affection >= 80) return { status: 'Deeply in Love', color: 'bg-pink-500', icon: Heart };
+  if (affection >= 60) return { status: 'Smitten', color: 'bg-red-500', icon: Heart };
+  if (affection >= 40) return { status: 'Interested', color: 'bg-orange-500', icon: Heart };
+  if (affection >= 20) return { status: 'Curious', color: 'bg-yellow-500', icon: Heart };
+  return { status: 'Neutral', color: 'bg-gray-500', icon: Users };
+}
+
+function getTrustColor(trust: number): string {
+  if (trust <= 10) return 'text-red-500';
+  if (trust <= 20) return 'text-orange-500';
+  if (trust <= 40) return 'text-yellow-500';
+  if (trust <= 60) return 'text-blue-500';
+  return 'text-green-500';
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
   const { gameState } = useGame();
   const [activeTab, setActiveTab] = useState('characters');
 
-  const getRelationshipStatus = (affection: number, trust: number) => {
-    // Trust-based danger states override normal affection states
-    if (trust <= 10) return { status: 'Hostile', color: 'bg-red-700', icon: AlertTriangle };
-    if (trust <= 20) return { status: 'Deeply Suspicious', color: 'bg-red-600', icon: AlertTriangle };
-    if (trust <= 30) return { status: 'Distrustful', color: 'bg-orange-600', icon: AlertTriangle };
-    if (trust <= 40) return { status: 'Wary', color: 'bg-yellow-600', icon: Shield };
-    
-    // Normal affection-based states when trust is adequate
-    if (affection >= 80) return { status: 'Deeply in Love', color: 'bg-pink-500', icon: Heart };
-    if (affection >= 60) return { status: 'Smitten', color: 'bg-red-500', icon: Heart };
-    if (affection >= 40) return { status: 'Interested', color: 'bg-orange-500', icon: Heart };
-    if (affection >= 20) return { status: 'Curious', color: 'bg-yellow-500', icon: Heart };
-    return { status: 'Neutral', color: 'bg-gray-500', icon: Users };
-  };
-
-  const getTrustColor = (trust: number) => {
-    if (trust <= 10) return 'text-red-500';
-    if (trust <= 20) return 'text-orange-500';
-    if (trust <= 40) return 'text-yellow-500';
-    if (trust <= 60) return 'text-blue-500';
-    return 'text-green-500';
-  };
+  // Memoize character list with relationship statuses to avoid recalculating on every render
+  const charactersWithStatus = useMemo(() => {
+    return Object.values(gameState.characters).map((character) => ({
+      ...character,
+      relationshipStatus: getRelationshipStatus(character.affection, character.trust)
+    }));
+  }, [gameState.characters]);
 
   return (
     <div className="lg:w-80 w-80 bg-gradient-to-b from-red-900/90 to-purple-900/90 backdrop-blur-sm border-r border-red-500/30">
@@ -148,8 +158,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {Object.values(gameState.characters).map((character) => {
-                    const { status, color, icon: StatusIcon } = getRelationshipStatus(character.affection, character.trust);
+                  {charactersWithStatus.map((character) => {
+                    const { status, color, icon: StatusIcon } = character.relationshipStatus;
                     return (
                       <div key={character.id} className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -167,8 +177,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                             <span className="text-gray-400">Affection</span>
                             <span className="text-pink-400">{character.affection}/100</span>
                           </div>
-                          <Progress 
-                            value={character.affection} 
+                          <Progress
+                            value={character.affection}
                             max={100}
                             className="h-1.5"
                           />
@@ -176,8 +186,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                             <span className="text-gray-400">Trust</span>
                             <span className={getTrustColor(character.trust)}>{character.trust}/100</span>
                           </div>
-                          <Progress 
-                            value={character.trust} 
+                          <Progress
+                            value={character.trust}
                             max={100}
                             className="h-1.5"
                           />

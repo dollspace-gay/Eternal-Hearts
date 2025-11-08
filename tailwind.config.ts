@@ -11,6 +11,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        // Shadcn/UI theme colors
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
@@ -44,6 +45,14 @@ export default {
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
+        // Game-specific theme colors
+        // Usage: text-blood-red, bg-vampire-red, border-midnight, etc.
+        "blood-red": "var(--blood-red)",
+        "vampire-red": "var(--vampire-red)",
+        "gothic-purple": "var(--gothic-purple)",
+        midnight: "var(--midnight)",
+        moonlight: "var(--moonlight)",
+        parchment: "var(--parchment)",
         chart: {
           "1": "var(--chart-1)",
           "2": "var(--chart-2)",

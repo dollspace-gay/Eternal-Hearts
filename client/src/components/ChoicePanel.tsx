@@ -40,10 +40,10 @@ export function ChoicePanel() {
         <div className="space-y-3">
           {allChoices.map((choice, index) => {
             const isTraitChoice = choice.text.includes('[');
-            
+
             return (
               <Button
-                key={choice.id}
+                key={`${choice.id}_${index}`}
                 onClick={() => makeChoice(choice)}
                 className={getChoiceStyles(choice)}
                 variant="outline"

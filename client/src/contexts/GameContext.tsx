@@ -4,6 +4,7 @@ import { initialGameState, gameData } from '../data/gameData';
 import { achievements, checkAchievements } from '../data/achievements';
 import { checkBackstoryUnlocks } from '../data/characterBackstories';
 import { applyCharacterEffects } from '../utils/characterEffects';
+import { recoveryActions } from '../data/recoveryActions';
 
 interface GameContextType {
   gameState: GameState;
@@ -62,22 +63,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       choice.effects.forEach(effect => {
         if (newState.characters[effect.characterId]) {
           newState.characters[effect.characterId].affection = Math.max(
-            0, 
+            0,
             Math.min(100, newState.characters[effect.characterId].affection + effect.affectionChange)
           );
-          
+
           // Apply trust changes if specified
           if (effect.trustChange !== undefined) {
             newState.characters[effect.characterId].trust = Math.max(
-              0, 
+              0,
               Math.min(100, newState.characters[effect.characterId].trust + effect.trustChange)
             );
           }
-          
+
           // Update character status based on affection and trust levels
           const affection = newState.characters[effect.characterId].affection;
           const trust = newState.characters[effect.characterId].trust;
-          
+
           // Trust-based danger states override normal affection states
           if (trust <= 10) {
             newState.characters[effect.characterId].status = 'Hostile';
@@ -101,6 +102,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
               newState.characters[effect.characterId].status = 'Neutral';
             }
           }
+        } else {
+          console.error(
+            `[GameContext] Attempted to apply effects to non-existent character: "${effect.characterId}". ` +
+            `Available characters: ${Object.keys(newState.characters).join(', ')}. ` +
+            `Choice: "${choice.text}" (${choice.id})`
+          );
         }
       });
 
@@ -248,7 +255,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         )
       };
       
-    case 'PERFORM_RECOVERY':
+    case 'PERFORM_RECOVERY': {
+      // Check cooldown to prevent race condition from rapid clicks
+      const lastUsed = state.lastRecoveryTimes[action.payload.actionId] || 0;
+      const now = Date.now();
+      const cooldownMs = 3 * 60 * 60 * 1000; // 3 hours minimum cooldown
+
+      if (now - lastUsed < cooldownMs) {
+        console.warn(
+          `[GameContext] Recovery action "${action.payload.actionId}" is still on cooldown. ` +
+          `Last used: ${new Date(lastUsed).toISOString()}, ` +
+          `Cooldown expires: ${new Date(lastUsed + cooldownMs).toISOString()}`
+        );
+        return state; // Don't apply recovery if on cooldown
+      }
+
       return {
         ...state,
         playerStats: {
@@ -260,9 +281,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
         lastRecoveryTimes: {
           ...state.lastRecoveryTimes,
-          [action.payload.actionId]: Date.now()
+          [action.payload.actionId]: now
         }
       };
+    }
       
     case 'UNLOCK_BACKSTORY':
       return {
@@ -504,22 +526,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UNLOCK_ACHIEVEMENT', payload: achievementId });
   };
 
-  const performRecoveryAction = (actionId: string) => {
-    // Will implement recovery action logic later
-    const healthRestore = actionId === 'basic_rest' ? 20 : actionId === 'meditation' ? 15 : 10;
-    const sanityRestore = actionId === 'meditation' ? 25 : actionId === 'basic_rest' ? 10 : 15;
-    
-    dispatch({ 
-      type: 'PERFORM_RECOVERY', 
-      payload: { actionId, healthRestore, sanityRestore } 
+  const performRecoveryAction = (actionId: string): void => {
+    // Look up recovery action from data
+    const action = recoveryActions[actionId];
+
+    if (!action) {
+      console.error(
+        `[GameContext] Attempted to perform unknown recovery action: "${actionId}". ` +
+        `Available actions: ${Object.keys(recoveryActions).join(', ')}`
+      );
+      return;
+    }
+
+    const { healthRestore, sanityRestore } = action;
+
+    dispatch({
+      type: 'PERFORM_RECOVERY',
+      payload: { actionId, healthRestore, sanityRestore }
     });
 
     // Add journal entry for recovery action
     const entry: JournalEntry = {
       id: `recovery_${Date.now()}`,
       type: 'recovery',
-      title: `Recovery: ${actionId.replace('_', ' ').toUpperCase()}`,
-      description: `Restored ${healthRestore} health and ${sanityRestore} sanity through ${actionId.replace('_', ' ')}.`,
+      title: `Recovery: ${action.name}`,
+      description: `${action.description} Restored ${healthRestore} health and ${sanityRestore} sanity.`,
       timestamp: Date.now()
     };
     addJournalEntry(entry);

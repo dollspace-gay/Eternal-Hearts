@@ -78,6 +78,48 @@ bd blocked
 7. **DRY principle** - Don't repeat yourself
 8. **Meaningful names** - No abbreviations, clear intent
 
+### Naming Conventions
+
+**Follow these conventions consistently across the codebase:**
+
+#### Variables and Constants
+- `gameState` - Current runtime state from Context/reducer
+- `gameData` - Static/initial game content and configuration data
+- `currentScene` - The active scene being displayed
+- `choice` - A single choice object
+- `choices` - Original array of choices from scene/data
+- `allChoices` - Combined/modified array including trait-specific choices
+- `modifiedChoice` - Choice object after applying character effects
+
+#### Functions
+- Use verb prefixes: `get`, `set`, `make`, `apply`, `check`, `handle`
+- `getAvailableX()` - Returns filtered/available items
+- `handleXAction()` - Event handler for user action
+- `applyXEffects()` - Applies side effects/modifications
+- `checkXCondition()` - Returns boolean for validation
+
+#### React Components
+- PascalCase for component names: `GameInterface`, `StoryPanel`
+- camelCase for component instances: `<ErrorBoundary>`, `<Button>`
+- Props interfaces: `ComponentNameProps`
+
+#### Types and Interfaces
+- PascalCase: `GameState`, `Choice`, `Character`
+- Avoid generic names like `Data` or `Info`
+- Use specific descriptors: `PlayerCharacter`, `RecoveryAction`
+
+#### Files
+- PascalCase for components: `GameInterface.tsx`, `StoryPanel.tsx`
+- camelCase for utilities: `characterEffects.ts`, `recoveryActions.ts`
+- kebab-case for config: `tailwind.config.ts`
+
+#### CSS/Tailwind
+- Game theme colors: `blood-red`, `vampire-red`, `gothic-purple`, `midnight`
+- Use kebab-case for custom color names
+- Prefer Tailwind utilities over custom classes
+
+When adding new code, follow these patterns. When refactoring, migrate to these conventions.
+
 ### Performance Standards
 
 1. **Profile before optimizing** - Measure, don't guess

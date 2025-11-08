@@ -1,5 +1,29 @@
 import { PlayerCharacter, Choice, PlayerTrait, PlayerFlaw, PlayerBoon } from '../types/game';
 
+// Helper function to deep clone a choice to prevent mutation of original data
+function cloneChoice(choice: Choice): Choice {
+  return {
+    ...choice,
+    effects: choice.effects.map(effect => ({ ...effect })),
+    playerStatEffects: choice.playerStatEffects ? { ...choice.playerStatEffects } : undefined
+  };
+}
+
+// Deterministic pseudo-random number generator using choice ID as seed
+// Returns a number between 0 and 1, deterministic for the same choice
+function getSeededRandom(choiceId: string, salt: string = ''): number {
+  // Simple hash function to convert string to number
+  let hash = 0;
+  const str = choiceId + salt;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Convert hash to 0-1 range
+  return Math.abs(hash % 10000) / 10000;
+}
+
 // Check if player has a specific trait, flaw, or boon
 export function hasPlayerTrait(character: PlayerCharacter | undefined, traitId: string): boolean {
   return character?.traits?.some(trait => trait.id === traitId) || false;
@@ -228,22 +252,24 @@ export function applyCharacterEffects(choices: Choice[], character: PlayerCharac
   if (!character) return choices;
 
   return choices.map(choice => {
-    let modifiedChoice = { ...choice };
-    
+    // Deep clone to prevent mutation of original choice data
+    let modifiedChoice = cloneChoice(choice);
+
     // Apply trait effects
     modifiedChoice = applyTraitEffects(modifiedChoice, character);
-    
+
     // Apply flaw effects
     modifiedChoice = applyFlawEffects(modifiedChoice, character);
-    
+
     // Apply boon effects
     modifiedChoice = applyBoonEffects(modifiedChoice, character);
-    
+
     return modifiedChoice;
   });
 }
 
 function applyTraitEffects(choice: Choice, character: PlayerCharacter): Choice {
+  // Note: choice is already deep cloned by applyCharacterEffects
   let modifiedChoice = { ...choice };
   
   // Athletic trait - bonus to physical actions
@@ -338,8 +364,8 @@ function applyFlawEffects(choice: Choice, character: PlayerCharacter): Choice {
       };
       modifiedChoice.consequence += ' • Nightmares haunt your rest';
     }
-    // Random nightmare trigger (10% chance on any choice)
-    if (Math.random() < 0.1) {
+    // Deterministic nightmare trigger (10% chance based on choice ID)
+    if (getSeededRandom(choice.id, 'nightmare') < 0.1) {
       modifiedChoice.playerStatEffects = {
         ...modifiedChoice.playerStatEffects,
         sanityChange: (modifiedChoice.playerStatEffects?.sanityChange || 0) - 3
@@ -442,8 +468,8 @@ function applyFlawEffects(choice: Choice, character: PlayerCharacter): Choice {
       };
       modifiedChoice.consequence += ' • Haunted past resurfaces';
     }
-    // Random trauma trigger (5% chance on any choice)
-    if (Math.random() < 0.05) {
+    // Deterministic trauma trigger (5% chance based on choice ID)
+    if (getSeededRandom(choice.id, 'trauma') < 0.05) {
       modifiedChoice.playerStatEffects = {
         ...modifiedChoice.playerStatEffects,
         sanityChange: (modifiedChoice.playerStatEffects?.sanityChange || 0) - 5
@@ -535,28 +561,28 @@ function applyBoonEffects(choice: Choice, character: PlayerCharacter): Choice {
   
   // Unnaturally Lucky - miraculous saves and fortuitous discoveries
   if (hasPlayerBoon(character, 'lucky')) {
-    // 15% chance to avoid negative consequences entirely
-    if (modifiedChoice.playerStatEffects?.sanityChange && modifiedChoice.playerStatEffects.sanityChange < 0 && Math.random() < 0.15) {
+    // 15% chance to avoid negative consequences entirely (deterministic based on choice ID)
+    if (modifiedChoice.playerStatEffects?.sanityChange && modifiedChoice.playerStatEffects.sanityChange < 0 && getSeededRandom(choice.id, 'lucky_sanity') < 0.15) {
       modifiedChoice.playerStatEffects.sanityChange = 0;
       modifiedChoice.consequence += ' • Lucky escape from psychological harm';
     }
-    
-    if (modifiedChoice.playerStatEffects?.healthChange && modifiedChoice.playerStatEffects.healthChange < 0 && Math.random() < 0.15) {
+
+    if (modifiedChoice.playerStatEffects?.healthChange && modifiedChoice.playerStatEffects.healthChange < 0 && getSeededRandom(choice.id, 'lucky_health') < 0.15) {
       modifiedChoice.playerStatEffects.healthChange = 0;
       modifiedChoice.consequence += ' • Miraculous avoidance of injury';
     }
-    
+
     // 20% chance to discover hidden information or opportunities
-    if (isInvestigativeChoice(choice) && Math.random() < 0.2) {
+    if (isInvestigativeChoice(choice) && getSeededRandom(choice.id, 'lucky_investigate') < 0.2) {
       modifiedChoice.effects = modifiedChoice.effects.map(effect => ({
         ...effect,
         affectionChange: effect.affectionChange + 5
       }));
       modifiedChoice.consequence += ' • Lucky discovery reveals hidden secrets';
     }
-    
+
     // 10% chance to turn dangerous situations into opportunities
-    if (isDangerousChoice(choice) && Math.random() < 0.1) {
+    if (isDangerousChoice(choice) && getSeededRandom(choice.id, 'lucky_danger') < 0.1) {
       modifiedChoice.effects = modifiedChoice.effects.map(effect => ({
         ...effect,
         affectionChange: effect.affectionChange + 8
@@ -568,19 +594,19 @@ function applyBoonEffects(choice: Choice, character: PlayerCharacter): Choice {
       };
       modifiedChoice.consequence += ' • Incredible luck turns danger into triumph';
     }
-    
+
     // 25% chance for serendipitous social encounters
-    if (isSocialChoice(choice) && Math.random() < 0.25) {
+    if (isSocialChoice(choice) && getSeededRandom(choice.id, 'lucky_social') < 0.25) {
       modifiedChoice.effects = modifiedChoice.effects.map(effect => ({
         ...effect,
         affectionChange: effect.affectionChange + 3
       }));
       modifiedChoice.consequence += ' • Fortuitous timing improves social outcome';
     }
-    
+
     // 12% chance to avoid negative affection changes
     const hasNegativeAffection = modifiedChoice.effects.some(effect => effect.affectionChange < 0);
-    if (hasNegativeAffection && Math.random() < 0.12) {
+    if (hasNegativeAffection && getSeededRandom(choice.id, 'lucky_affection') < 0.12) {
       modifiedChoice.effects = modifiedChoice.effects.map(effect => ({
         ...effect,
         affectionChange: Math.max(0, effect.affectionChange)
@@ -598,7 +624,7 @@ function applyBoonEffects(choice: Choice, character: PlayerCharacter): Choice {
       modifiedChoice.consequence += ' • Supernatural luck amplifies fortune';
     }
     
-    if (isDiscoveryChoice(choice) && Math.random() < 0.3) {
+    if (isDiscoveryChoice(choice) && getSeededRandom(choice.id, 'lucky_discovery') < 0.3) {
       // Higher chance for discovery bonuses
       modifiedChoice.consequence += ' • Luck leads to unexpected findings';
       modifiedChoice.playerStatEffects = {
@@ -606,11 +632,11 @@ function applyBoonEffects(choice: Choice, character: PlayerCharacter): Choice {
         sanityChange: (modifiedChoice.playerStatEffects?.sanityChange || 0) + 2
       };
     }
-    
+
     // 8% chance for miraculous reversals in any negative situation
     const hasNegativeStats = (modifiedChoice.playerStatEffects?.healthChange && modifiedChoice.playerStatEffects.healthChange < -3) ||
                             (modifiedChoice.playerStatEffects?.sanityChange && modifiedChoice.playerStatEffects.sanityChange < -5);
-    if (hasNegativeStats && Math.random() < 0.08) {
+    if (hasNegativeStats && getSeededRandom(choice.id, 'lucky_reversal') < 0.08) {
       modifiedChoice.playerStatEffects = {
         healthChange: Math.abs(modifiedChoice.playerStatEffects?.healthChange || 0),
         sanityChange: Math.abs(modifiedChoice.playerStatEffects?.sanityChange || 0)

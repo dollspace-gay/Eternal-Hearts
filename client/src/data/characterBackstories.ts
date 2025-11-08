@@ -1,5 +1,7 @@
 import { CharacterBackstory, GameState } from '../types/game';
-import { characters } from './gameData';
+
+// Note: Backstory scenes should reference characterId and look up current character data
+// from gameState when rendering, not use static character references
 
 export const characterBackstories: CharacterBackstory[] = [
   {
@@ -21,7 +23,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"The mortals called me the Queen of the Night, though they never understood my true nature."',
           'She pauses, the weight of countless centuries evident in her expression.'
         ],
-        character: characters.lilith,
+        // Character data should be looked up from gameState.characters.lilith when rendering
         background: '/backgrounds/grand-hall.png',
         choices: [
           {
@@ -62,7 +64,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"I was the one they were truly hunting - a real witch with real power."',
           'The shadows around her seem to respond to her emotions, growing darker and more animated.'
         ],
-        character: characters.morgana,
+        // Character data should be looked up from gameState.characters.morgana when rendering
         background: '/backgrounds/library.png',
         choices: [
           {
@@ -104,7 +106,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"The other angels saw my compassion as weakness, my interventions as defiance."',
           'Her voice carries the weight of divine judgment and eternal exile.'
         ],
-        character: characters.seraphina,
+        // Character data should be looked up from gameState.characters.seraphina when rendering
         background: '/backgrounds/garden-courtyard.png',
         choices: [
           {
@@ -145,7 +147,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"My maker believed that vampires should be the vanguard of progress, not shadows hiding from history."',
           'Her revolutionary spirit was forged in the fires of one of history\'s greatest transformations.'
         ],
-        character: characters.valentina,
+        // Character data should be looked up from gameState.characters.valentina when rendering
         background: '/backgrounds/library.png',
         choices: [
           {
@@ -186,7 +188,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"Irony has a cruel sense of humor - the monster I hunted most relentlessly was the one who turned me."',
           'The weight of her transformation from hunter to vampire has shaped every aspect of her existence.'
         ],
-        character: characters.raven,
+        // Character data should be looked up from gameState.characters.raven when rendering
         background: '/backgrounds/grand-hall.png',
         choices: [
           {
@@ -227,7 +229,7 @@ export const characterBackstories: CharacterBackstory[] = [
           '"My music was published under men\'s names, my genius attributed to others."',
           'The pain of having her life\'s work stolen echoes in every note she plays.'
         ],
-        character: characters.elena,
+        // Character data should be looked up from gameState.characters.elena when rendering
         background: '/backgrounds/music-room.png',
         choices: [
           {
